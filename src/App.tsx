@@ -17,6 +17,7 @@ function App() {
   const [history, setHistory] = useState<UrlEntry[]>([]);
   const [notFound, setNotFound] = useState(false);
 
+  // Original useEffect
   useEffect(() => {
     const path = window.location.pathname.slice(1);
     if (path) {
@@ -24,6 +25,29 @@ function App() {
     } else {
       loadHistory();
     }
+  }, []);
+
+  // New Debug useEffects
+  useEffect(() => {
+    // Debug environment variables
+    console.log('Environment Variables:', {
+      SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      HAS_ANON_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+    });
+  }, []);
+
+  useEffect(() => {
+    // Test Supabase connection
+    const testConnection = async () => {
+      const { data, error } = await supabase
+        .from('urls')
+        .select('*')
+        .limit(1);
+      
+      console.log('Supabase Test:', { data, error });
+    };
+    
+    testConnection();
   }, []);
 
   const handleRedirect = async (path: string) => {
@@ -78,12 +102,25 @@ function App() {
 
     setIsLoading(true);
     try {
-      const shortCode = nanoid(8);
-      const { error } = await supabase.from('urls').insert({
-        short_url: shortCode,
-        long_url: longUrl,
-        user_ip: 'anonymous'
+      // Debug logs
+      console.log('Attempting to create URL:', {
+        longUrl,
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+        hasKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY
       });
+
+      const shortCode = nanoid(8);
+      const { data, error } = await supabase
+        .from('urls')
+        .insert({
+          short_url: shortCode,
+          long_url: longUrl,
+          clicks: 0
+        })
+        .select()
+        .single();
+
+      console.log('Insert response:', { data, error });
 
       if (error) throw error;
 
@@ -91,6 +128,7 @@ function App() {
       setLongUrl('');
       loadHistory();
     } catch (error) {
+      console.error('Error creating URL:', error);
       toast.error('Failed to shorten URL');
     } finally {
       setIsLoading(false);
